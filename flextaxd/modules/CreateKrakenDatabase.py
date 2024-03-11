@@ -11,6 +11,8 @@ import random
 import os
 import glob
 from multiprocessing import Process,Manager,Pool
+import concurrent.futures
+import logging
 from subprocess import Popen,PIPE,check_output,CalledProcessError
 from .database.DatabaseConnection import DatabaseFunctions
 from time import sleep
@@ -103,19 +105,11 @@ class CreateKrakenDatabase(object):
 		return list(a[i * k + min(i, m):(i + 1) * k + min(i + 1, m)] for i in range(n))
 
 	def kraken_fasta_header_multiproc(self,genomes):
-		'''function to run addition of genomes in paralell'''
-		logger.info("Processing files; create kraken seq.map")
-		jobs = []
-		manager = Manager()
-		added = manager.Queue()
-		for i in range(self.processes):
-			p = Process(target=self.kraken_fasta_header, args=(genomes[i],added))
-			p.daemon=True
-			p.start()
-			jobs.append(p)
-		for job in jobs:
-			job.join()
-		self.added = added.qsize()
+		'''Function to run addition of genomes in parallel'''
+		logger.info("Processing files; create kraken seq.maps")
+		with multiprocessing.Pool() as pool:
+			results = pool.map(self.kraken_fasta_header, genomes)
+		self.added = sum(results)
 		return "Processes done"
 
 	def kraken_fasta_header(self,genomes,added):
@@ -272,20 +266,24 @@ class CreateKrakenDatabase(object):
 			logger.info(self.krakenversion+"-build --build --db {krakendb} {params} --threads {threads}".format(krakendb=self.krakendb, threads=self.build_processes, params=self.params))
 			os.system(self.krakenversion+"-build --build --db {krakendb} {params} --threads {threads}".format(krakendb=self.krakendb, threads=self.build_processes, params=self.params))
 		else:
-			logger.info(self.krakenversion+"-build --build --skip-maps --db {krakendb} {params} --threads {threads}".format(krakendb=self.krakendb, threads=self.build_processes, params=self.params))
-			os.system(self.krakenversion+"-build --build --skip-maps --db {krakendb} {params} --threads {threads}".format(krakendb=self.krakendb, threads=self.build_processes, params=self.params))
+			logger.info(self.krakenversion+"-build --build --db {krakendb} {params} --threads {threads}".format(krakendb=self.krakendb, threads=self.build_processes, params=self.params))
+			os.system(self.krakenversion+"-build --build --db {krakendb} {params} --threads {threads}".format(krakendb=self.krakendb, threads=self.build_processes, params=self.params))
 
 		if self.krakenversion in ["kraken2"]:
 			logger.info("Create inspect file!")
-			os.system(self.krakenversion+"-inspect --db {krakendb} --report-zero-counts --threads {threads} > {krakendb}/inspect.txt".format(krakendb=self.krakendb,threads=self.build_processes ))
+			print('!!!!! !!!! krakendb name is {krakendb}'.format(krakendb=self.krakendb))
+			logger.info(
+				self.krakenversion + "-inspect --db {krakendb} --report-zero-counts --threads 1 > {krakendb}/inspect.txt")
+			os.system(self.krakenversion+"-inspect --db {krakendb} --report-zero-counts --threads 1 > {krakendb}/inspect.txt".format(krakendb=self.krakendb,threads=self.build_processes ))
+
 			os.system("gzip {krakendb}/*.map".format(krakendb=self.krakendb))
-			os.system("gzip {krakendb}/inspect.txt".format(krakendb=self.krakendb))
+			#os.system("gzip {krakendb}/inspect.txt".format(krakendb=self.krakendb))
 		if not keep:
 			os.system(self.krakenversion+"-build --clean --db {krakendb}".format(outdir=outdir,krakendb=self.krakendb, threads=self.processes))
 			## re-add taxonomy
 			os.system("mkdir -p {krakendb}/taxonomy".format(outdir=outdir, krakendb=self.krakendb))
 			os.system("cp {outdir}/*names.dmp {krakendb}/taxonomy/names.dmp".format(outdir=outdir,krakendb=self.krakendb))
 			os.system("cp {outdir}/*nodes.dmp {krakendb}/taxonomy/nodes.dmp".format(outdir=outdir,krakendb=self.krakendb))
-			# logger.info("Cleaning up tmp files")
-			# os.system('find {krakendb} -maxdepth 1 -name "*.f*a" -print0 | xargs -0 rm'.format(krakendb=self.krakendb))
+			logger.info("Cleaning up tmp files")
+			os.system('find {krakendb} -maxdepth 1 -name "*.f*a" -print0 | xargs -0 rm'.format(krakendb=self.krakendb))
 		logger.info("{krakenversion} database created".format(krakenversion=self.krakenversion))
