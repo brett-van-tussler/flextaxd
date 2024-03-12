@@ -75,6 +75,7 @@ class ReadTaxonomyNCBI(ReadTaxonomy):
 
 	def parse_genebank_file(self,filepath,filename):
 		logger.debug("Parse file {filename}".format(filename=filename))
+		print("{filename}".format(filename=filename))
 		genebankid = filename.split("_",2)
 		genebankid = genebankid[0]+"_"+genebankid[1]
 		f = zopen(filepath,"r")
@@ -92,6 +93,7 @@ class ReadTaxonomyNCBI(ReadTaxonomy):
 		self.refseqid_to_GCF = {}
 		for root, dirs, files in os.walk(genomes_path,followlinks=True):
 			for filename in files:
+				print(filename)
 				if filename.strip(".gz").endswith(".fna"):
 					filepath = os.path.join(root, filename)
 					self.parse_genebank_file(filepath,filename)

@@ -137,7 +137,7 @@ def main():
 
     if args.version:
         print("{name}: version {version}".format(name=__pkgname__,version=__version__))
-        print("Maintaner group: {maintaner} ({email})".format(maintaner=__maintainer__,email=", ".join(__email__)))
+        print("Maintainer group: {maintainer} ({email})".format(maintainer=__maintainer__,email=", ".join(__email__)))
         print("Github: {github}".format(github=__github__))
         exit()
 
@@ -148,22 +148,23 @@ def main():
     elif args.verbose:
         logval = args.verbose
 
-    from datetime import date
+    from datetime import datetime
     from datetime import time as dtime
     t = dtime()
-    today = date.today()
+    now = datetime.now()
     if not os.path.exists(args.logs):
         os.mkdir(args.logs)
-    logpath = args.logs+"FlexTaxD-create-"+today.strftime("%b-%d-%Y")+"{}.log"
-    if os.path.exists(logpath):
-        logpath=logpath.format("-{:%H:%M}".format(t))
-    else: logpath = logpath.format("")
+    log_path = args.logs + "/FlexTaxD-create-" + now.strftime("%b-%d-%Y-%H-%M-%S")+".log"
+    if os.path.exists(log_path):
+        log_path=log_path.format("-{:%H:%M}".format(t))
+    else:
+        log_path = log_path.format("")
 
     logging.basicConfig(
             level=logval,
             format="%(asctime)s %(module)s [%(levelname)-5.5s]  %(message)s",
             handlers=[
-                logging.FileHandler(logpath),
+                logging.FileHandler(log_path),
                 logging.StreamHandler()
             ])
     logger = logging.getLogger(__name__)
@@ -181,8 +182,12 @@ def main():
         '''Check if datase exists if it does make sure the user intends to overwrite the file'''
         dump_prefix = "names,nodes"
         nameprefix,nodeprefix = dump_prefix.split(",")
-        if (os.path.exists(args.tmpdir.rstrip("/")+"/"+nameprefix+".dmp") or os.path.exists(args.tmpdir.rstrip("/")+"/"+nameprefix+".dmp")):
-            ans = input("Warning: {names} and/or {nodes} already exists, overwrite? (y/n): ")
+
+        namefile=args.tmpdir.rstrip("/") + "/" + nameprefix + ".dmp"
+        nodefile=args.tmpdir.rstrip("/") + "/" + nodeprefix + ".dmp"
+        if (os.path.exists(namefile) or os.path.exists(nodefile)):
+            logger.info("Warning: " + namefile + " or " + nodefile + " already exists, overwriting")
+            ans = 'y'
             if ans not in ["y","Y","yes", "Yes"]:
                 exit("Dump already exists, abort!")
 
@@ -249,7 +254,7 @@ def main():
                     try:
                         shutil.rmtree(args.genomes_path+'/'+'downloads')
                     except:
-                        logger.info('no genomes were downloaded, expeted for download was: '+str(len(missing)))
+                        logger.info('no genomes were downloaded, expected for download was: '+str(len(missing)))
                     genomes, missing = process_directory_obj.process_folder(args.genomes_path)
                     #/
                 elif 1 and 'new download using ncbi "datasets" software' and download_prompted:

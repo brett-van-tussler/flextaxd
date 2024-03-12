@@ -220,7 +220,7 @@ def main():
     '''if force is on overwrite previous data without questions'''
 
     if (os.path.exists(args.database) and args.taxonomy_file) and not force:
-        ans = input("Warning: {database} already exists, overwrite? (y/n): ".format(database=args.database))
+        ans = 'y' #input("Warning: {database} already exists, overwrite? (y/n): ".format(database=args.database))
         if ans not in ["y","Y","yes", "Yes"]:
             exit("Database already exists, abort!")
         force = True
@@ -231,7 +231,7 @@ def main():
         from modules.database.DatabaseConnection import ModifyFunctions
         db = ModifyFunctions(args.database)
         db.validate_tree()
-        exit("Validation comleted!")
+        exit("Validation completed!")
 
     if args.stats:
         from modules.database.DatabaseConnection import ModifyFunctions
